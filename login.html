@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="card">
+    <h2>Admin Login</h2>
+
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button id="loginBtn">Login</button>
+
+    <p id="msg"></p>
+</div>
+
+<script type="module">
+import { auth } from "./firebase.js";
+import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js";
+
+document.getElementById("loginBtn").onclick = function () {
+
+    const email = document.getElementById("email").value;
+    const pass  = document.getElementById("password").value;
+
+    signInWithEmailAndPassword(auth, email, pass)
+        .then(() => window.location = "dashboard.html")
+        .catch(err => document.getElementById("msg").innerText = err.message);
+};
+</script>
+
+</body>
+</html>

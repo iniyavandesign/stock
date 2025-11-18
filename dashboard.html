@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Stock Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+
+  <script type="module">
+
+    /* IMPORT FIREBASE */
+    import { auth, db } from "./firebase.js";
+    import {
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js";
+
+    import {
+      collection,
+      addDoc,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js";
+
+
+    /* CHECK AUTH */
+    onAuthStateChanged(auth, user => {
+      if (!user) window.location = "login.html";
+    });
+
+
+    /* LOGOUT */
+    window.logoutNow = () => signOut(auth);
+
+
+    /* ADD STOCK */
+    window.addStock = async () => {
+
+      const stock = document.getElementById("stockName").value.trim();
+      const buy   = parseFloat(document.getElementById("buyPrice").value);
+      const qty   = parseFloat(document.getElementById("quantity").value);
+
+      if (!stock || isNaN(buy) || isNaN(qty)) {
+        alert("Enter valid stock values.");
+        return;
+      }
+
+      await addDoc(collection(db, "stocks"), {
+        stock: stock.toUpperCase(),
+        buy: buy,
+        qty: qty,
+        createdAt: Date.now()
+      });
+
+      document.getElementById("stockName").value = "";
+      document.getElementById("buyPrice").value = "";
+      document.getElementById("quantity").value = "";
+    };
+
+
+    /* DISPLAY STOCK + LIVE PRICE + P/L */
+    onSnapshot(collection(db, "stocks"), async snapshot => {
+      let html = "";
+
+      for (let docItem of snapshot.docs) {
+        let s = docItem.data();
+
+        let livePrice = await getLivePrice(s.stock);
+        let pnl = ((livePrice - s.buy) * s.qty).toFixed(2);
+        let color = pnl >= 0 ? "profit" : "loss";
+
+        html += `
+          <div class="stock-card">
+              <h3>${s.stock}</h3>
+              <p>Buy Price: ₹${s.buy}</p>
+              <p>Quantity: ${s.qty}</p>
+              <p>Live Price: <b>₹${livePrice}</b></p>
+              <p>P/L: <b class="${color}">₹${pnl}</b></p>
+          </div>`;
+      }
+
+      document.getElementById("stockList").innerHTML = html;
+    });
+
+
+    /* LIVE PRICE FROM GOOGLE SHEET API */
+    async function getLivePrice(symbol) {
+
+      const apiURL = "https://script.google.com/macros/s/AKfycbxG5XG8HUP9IMI3lAnFf4w0Vodbmf-xZitvmNb6hD0SSq7X3mm59lORefWcckCQwKUu4g/exechttps://script.google.com/macros/s/AKfycbxG5XG8HUP9IMI3lAnFf4w0Vodbmf-xZitvmNb6hD0SSq7X3mm59lORefWcckCQwKUu4g/exec";
+
+      try {
+        const response = await fetch(apiURL);
+        const json = await response.json();
+
+        let item = json.find(row =>
+          row.symbol.toUpperCase() === symbol.toUpperCase()
+        );
+
+        return item ? Number(item.price) : 0;
+
+      } catch (error) {
+        console.error("Live Price Error:", error);
+        return 0;
+      }
+    }
+
+  </script>
+</head>
+
+<body>
+
+  <button id="logoutBtn" onclick="logoutNow()">Logout</button>
+
+  <div class="container">
+    <h2>Stock Portfolio</h2>
+
+    <div class="input-group">
+      <input id="stockName" placeholder="TCS, INFY, ITC">
+      <input id="buyPrice" placeholder="Buy Price">
+      <input id="quantity" placeholder="Qty">
+      <button onclick="addStock()">Add</button>
+    </div>
+
+    <div id="stockList" class="grid"></div>
+  </div>
+
+</body>
+
+</html>
